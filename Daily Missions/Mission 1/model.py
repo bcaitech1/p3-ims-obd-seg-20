@@ -60,13 +60,11 @@ class FCN(nn.Module):
         self.pool5=nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True)  # Origianl -> 1/32 when True, will use ceil instead of floor to compute the output shape 
 
         #fc6
-        self.fc6=nn.Conv2d(512,4096,1)
-        self.relu6=nn.ReLU(inplace=True)
+        self.fc6=CBR(512,4096,1,1,0)
         self.drop6=nn.Dropout2d()
 
         #fc7
-        self.fc7=nn.Conv2d(4096,4096,1)
-        self.relu7=nn.ReLU(inplace=True)
+        self.fc7=CBR(4096,4096,1,1,0)
         self.drop7=nn.Dropout2d()
 
         # score
