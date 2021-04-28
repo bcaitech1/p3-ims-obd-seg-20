@@ -25,19 +25,17 @@ Lecture 3) Semantic Segmentation의 기초와 이해 & FCN
    3.2 정리
 
 # 1. 세그멘테이션 개요
-
-![image-20210427012059872](\image-20210427012059872.png)
+<img src="./images/Pstage3_3/image-20210427012059872.png" style="zoom: 40%;" />
 
 ## 1.1 Semantic Segmentation과 다른 분야 비교
 
 - Object Detection은 Multi object를 위한 Image Localization
 - Image Segmantation은 pixel 단위 class 분류
 
-![image-20210427012139818](\image-20210427012139818.png)
+<img src="./images/Pstage3_3/image-20210427012139818.png" style="zoom: 40%;" />
 
 ## 1.2 Segmentation 활용 분야
-
-![image-20210427012407770](\image-20210427012407770.png)
+<img src="./images/Pstage3_3/image-20210427012407770.png" style="zoom: 40%;" />
 
 # 2. 대표적인 딥러닝을 이용한 세그멘테이션 FCN
 
@@ -47,7 +45,7 @@ Lecture 3) Semantic Segmentation의 기초와 이해 & FCN
 2. VGG 네트워크의 FC Layer (nn.Linear)를 Convolution으로 대체
 3. Transposed Convolution을 이용해서 Pixel Wise prediction 수행
 
-![image-20210427012543304](\image-20210427012543304-1619526172415.png)
+<img src="./images/Pstage3_3/image-20210427012543304-1619526172415.png" style="zoom: 40%;" />
 
 ## 2.1 VGG
 
@@ -55,7 +53,7 @@ VGG: 3x3 Convolution layer를 deep하게 쌓아 적은 파라미터 숫자로 �
 
 Backbone: 더 좋은 환경에서 훈련된 모델을 사용 => 시간 절약 및 성능 향상
 
-![image-20210427012927328](\image-20210427012927328.png)
+<img src="./images/Pstage3_3/image-20210427012927328.png" style="zoom: 40%;" />
 
 ## 2.2 Fully Connected Layer vs Convolution Layer
 
@@ -63,13 +61,13 @@ Backbone: 더 좋은 환경에서 훈련된 모델을 사용 => 시간 절약 �
 
 - Classifier: transition invarience => 입력의 위치 변화에도 동일한 출력 효과
 
-<img src="\image-20210427013100186.png" alt="image-20210427013100186" style="zoom:50%;" />
+<img src="./images/Pstage3_3/image-20210427013100186.png" style="zoom: 40%;" />
 
 ### 특징2. 임의의 입력 크기값에도 동일한 크기의 출력
 
 - 1x1 Convolution => Convolution은 kernel의 파라미터에 의해 영향을 받고, 이미지 혹은 레이어의 크기와는 무관
 
-  ![image-20210427013621835](\image-20210427013621835.png)
+<img src="./images/Pstage3_3/image-20210427013621835.png" style="zoom: 40%;" />
 
 ## 2.3 Transposed Convolution
 
@@ -77,7 +75,7 @@ Segmantaion은 Upsampling 필요 => Transposed Convolution 방법 활용
 
 ### Downsampling
 
-![image-20210427013915257](\image-20210427013915257.png)
+<img src="./images/Pstage3_3/image-20210427013915257.png" style="zoom: 40%;" />
 
 ### Upsampling
 
@@ -86,21 +84,19 @@ Segmantaion은 Upsampling 필요 => Transposed Convolution 방법 활용
 - stride 변화를 통해 출력 사이즈 조절이 가능하다.
   - e.g. stride:1 => 4x4, stride:2 => 5x5
 
-![image-20210427014053762](\image-20210427014053762.png)
+<img src="./images/Pstage3_3/image-20210427014053762.png" style="zoom: 40%;" />
 
 ### Downsampling
 
-![image-20210427014438965](\image-20210427014438965.png)
+<img src="./images/Pstage3_3/image-20210427014438965.png" style="zoom: 40%;" />
 
 ### Transposed Convolution
 
-![image-20210427014552290](\image-20210427014552290.png)
+<img src="./images/Pstage3_3/image-20210427014552290.png" style="zoom: 40%;" />
 
 ### Deconvolution
 
 엄밀히 결과가 동일하지 않기에 수학적으론 틀린 표현이나, 관용적으로 동일한 의미로 쓰인다.
-
-![image-20210427014818169](C:\Users\user\AppData\Roaming\Typora\typora-user-images\image-20210427014818169.png)
 
 ### Transposed Convolution 정리
 
@@ -127,7 +123,7 @@ Segmantaion은 Upsampling 필요 => Transposed Convolution 방법 활용
 
 2. Upsampled Size를 줄여주기에 좀 더 효율적인 이미지 복원 가능 (2개의 Decov layer 적층)
 
-![image-20210427020108900](\image-20210427020108900.png)
+<img src="./images/Pstage3_3/image-20210427020108900.png" style="zoom: 40%;" />
 
 # 3. 결론
 
@@ -139,9 +135,9 @@ Segmantaion은 Upsampling 필요 => Transposed Convolution 방법 활용
 - Mean IoU
   - Segmenation에서 가장 많이 사용하는 평가 지표 & 본 컴패티션에서 사용하는 평가지표
 
-![image-20210427020520788](C:\Users\user\Downloads\Pstage3\마크다운&이미지\image-20210427020520788.png)
+<img src="./images/Pstage3_3/image-20210427020520788.png" style="zoom: 40%;" />
 
-![image-20210427020817242](\image-20210427020817242.png)
+<img src="./images/Pstage3_3/image-20210427020817242.png" style="zoom: 40%;" />
 
 ## 3.2 정리
 
