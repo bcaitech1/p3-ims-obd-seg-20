@@ -1,4 +1,4 @@
-from collections import OrderedDict
+
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +10,7 @@ from torch.nn.modules import padding
 ###########################Test
 import unittest
 
-from torch.nn.modules.dropout import Dropout2d
+
 
 class TestModel(unittest.TestCase):
 
