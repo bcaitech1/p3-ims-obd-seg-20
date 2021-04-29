@@ -2,15 +2,15 @@ from collections import OrderedDict
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules import padding
 
 
 
 
-###########################Test
+#############################################################################################
+# test 
 import unittest
 
-from torch.nn.modules.dropout import Dropout2d
+
 
 class TestModel(unittest.TestCase):
 
@@ -22,10 +22,29 @@ class TestModel(unittest.TestCase):
         self.input=torch.randn(size=[1,3,512,512])
 
         #model
+        self.deconv_net=DeconvNet()
+        self.seg_net=SegNet()
         self.deeplab_v1=DeepLabV1()
-        self.dilated_net=DilatedNet()
         self.deeplab_v2=DeepLabV2()
-        print(self.deeplab_v2)
+        self.dilated_net=DilatedNet()
+        
+        
+        
+    def test_deconv_net_shape(self):
+        out=self.deconv_net(self.input)
+        _,out_num_classes,out_height,out_width=out.shape
+        self.assertEqual(out_num_classes,self.num_classes,msg='Failed to match "num_classes"')
+        self.assertEqual(out_height,self.height,msg='Failed to match "height"')
+        self.assertEqual(out_width,self.width,msg='Failed to match "width"')
+        print('Success to DeconvNet')
+    
+    def test_seg_net_shape(self):
+        out=self.seg_net(self.input)
+        _,out_num_classes,out_height,out_width=out.shape
+        self.assertEqual(out_num_classes,self.num_classes,msg='Failed to match "num_classes"')
+        self.assertEqual(out_height,self.height,msg='Failed to match "height"')
+        self.assertEqual(out_width,self.width,msg='Failed to match "width"')
+        print('Success to SegNet')
 
         
 
@@ -53,13 +72,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(out_width,self.width,msg='Failed to match "width"')
         print('Success to DilatedNet')
 
-        
-        
-
-
-
-
-
+    
+#############################################################################################        
 #Backbone
 class ResNet(nn.Module):
     """Some Information about ResNet"""
@@ -67,6 +81,349 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
 
     def forward(self, x):
+
+        return x
+
+#############################################################################################
+'''
+=============================================================================
+Decoder를 개선한 models
+DeconvNet,SegNet
+=============================================================================
+'''
+class DeconvNet(nn.Module):
+    """
+    Some Information about DeconvNet
+
+    conv1 : 3x3 conv , 3x3 conv , 2x2 MaxPooling
+    conv2 : 3x3 conv , 3x3 conv , 2x2 MaxPooling
+    conv3 : 3x3 conv , 3x3 conv , 3x3 conv, 2x2 MaxPooling
+    conv4 : 3x3 conv , 3x3 conv , 3x3 conv, 2x2 MaxPooling
+    conv5 : 3x3 conv , 3x3 conv , 3x3 conv, 2x2 MaxPooling
+
+    fc6 : 7x7 conv
+    fc7 : 1x1 conv
+    fc6_deconv : 7x7 deconv,
+
+    deconv5 : 2x2 MaxUnpooling , 3x3 deconv , 3x3 deconv , 3x3 deconv
+    deconv4 : 2x2 MaxUnpooling , 3x3 deconv , 3x3 deconv , 3x3 deconv
+    deconv3 : 2x2 MaxUnpooling , 3x3 deconv , 3x3 deconv , 3x3 deconv
+    deconv2 : 2x2 MaxUnpooling , 3x3 deconv , 3x3 deconv 
+    deconv1 : 2x2 MaxUnpooling , 3x3 deconv , 3x3 deconv 
+
+    score : 1x1 conv
+    """
+    def __init__(self,num_classes=12):
+        super(DeconvNet, self).__init__()
+
+        def CBR(in_channels,out_channels,kernel_size=3,stride=1,padding=1):
+            return nn.Sequential(nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding
+            ), 
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+            )
+        def DCB(in_channels,out_channels,kernel_size=3,stride=1,padding=1):
+            return nn.Sequential(nn.ConvTranspose2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding
+            ),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+            )
+        
+        def encoder():
+            module=nn.ModuleDict()
+            conv1=nn.Sequential(OrderedDict([
+                ('conv1_1',CBR(in_channels=3,out_channels=64,kernel_size=3,stride=1,padding=1)),
+                ('conv1_2',CBR(64,64,3,1,1)),
+                ('pool1',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/2 , return_indices : unpooling 
+            ])
+            )
+            module['conv1']=conv1
+
+            conv2=nn.Sequential(OrderedDict([
+                ('conv2_1',CBR(64,128,3,1,1)),
+                ('conv2_2',CBR(128,128,3,1,1)),
+                ('pool2',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/4 , return_indices : unpooling 
+            ])
+            )
+            module['conv2']=conv2
+
+
+            conv3=nn.Sequential(OrderedDict([
+                ('conv3_1',CBR(128,256,3,1,1)),
+                ('conv3_2',CBR(256,256,3,1,1)),
+                ('conv3_3',CBR(256,256,3,1,1)),
+                ('pool3',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/8 , return_indices : unpooling 
+            ])
+            )
+            module['conv3']=conv3
+
+            conv4=nn.Sequential(OrderedDict([
+                ('conv4_1',CBR(256,512,3,1,1)),
+                ('conv4_2',CBR(512,512,3,1,1)),
+                ('conv4_3',CBR(512,512,3,1,1)),
+                ('pool4',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/16 , return_indices : unpooling 
+            ])
+            )
+            module['conv4']=conv4
+
+            conv5=nn.Sequential(OrderedDict([
+                ('conv5_1',CBR(512,512,3,1,1)),
+                ('conv5_2',CBR(512,512,3,1,1)),
+                ('conv5_3',CBR(512,512,3,1,1)),
+                ('pool5',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/32 , return_indices : unpooling 
+            ])
+            )
+            module['conv5']=conv5
+
+            return module
+        
+        def fc():
+            module=nn.ModuleDict()
+            fc6=nn.Sequential(
+                CBR(512,4096,kernel_size=7,stride=1,padding=0),
+                nn.Dropout2d()
+            )
+            module['fc6']=fc6
+
+            fc7=nn.Sequential(
+                CBR(4096,4096,1,1,0),
+                nn.Dropout2d()
+            )
+            module['fc7']=fc7
+
+            fc6_deconv=DCB(4096,512,7,1,0)
+            module['fc6_deconv']=fc6_deconv
+
+            return module
+
+
+
+        def decoder():
+            module=nn.ModuleDict()
+            deconv5=nn.Sequential(OrderedDict([
+                ('unpool5',nn.MaxUnpool2d(kernel_size=2,stride=2)),# 1/32 -> 1/16
+                ('deconv5_1',DCB(512,512,3,1,1)),
+                ('deconv5_2',DCB(512,512,3,1,1)),
+                ('deconv5_3',DCB(512,512,3,1,1)),
+            ])) 
+            module['deconv5']=deconv5
+
+            deconv4=nn.Sequential(OrderedDict([
+                ('unpool4',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/16 -> 1/8
+                ('deconv4_1',DCB(512,512,3,1,1)),
+                ('deconv4_2',DCB(512,512,3,1,1)),
+                ('deconv4_3',DCB(512,256,3,1,1)),
+            ])) 
+            module['deconv4']=deconv4
+
+            deconv3=nn.Sequential(OrderedDict([
+                ('unpool3',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/8 -> 1/4
+                ('deconv3_1',DCB(256,256,3,1,1)),
+                ('deconv3_2',DCB(256,256,3,1,1)),
+                ('deconv3_3',DCB(256,128,3,1,1)),
+            ])) 
+            module['deconv3']=deconv3
+
+            deconv2=nn.Sequential(OrderedDict([
+                ('unpool2',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/8 -> 1/2
+                ('deconv2_1',DCB(128,64,3,1,1)),
+                ('deconv2_2',DCB(64,64,3,1,1)),
+            ])) 
+            module['deconv2']=deconv2
+
+            deconv1=nn.Sequential(OrderedDict([
+                ('unpool1',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/2 -> Original
+                ('deconv1_1',DCB(64,64,3,1,1)),
+                ('deconv1_2',DCB(64,64,3,1,1)),
+            ])) 
+            module['deconv1']=deconv1
+
+            return module
+
+        self.encoder=encoder()
+        self.fc=fc()
+        self.decoder=decoder()
+        self.score_fr=nn.Conv2d(64,num_classes,1,1,0)
+
+
+    def forward(self, x):
+        #encoder
+        pool_indices=dict()
+        for _,p_module in self.encoder.named_children(): 
+            for name,c_module in p_module.named_children(): 
+                if name in ['pool1','pool2','pool3','pool4','pool5']:
+                    x,pool_indices[name]=c_module(x)
+                else:
+                    x=c_module(x)
+        #fc
+        for key in self.fc.keys():
+            x=self.fc[key](x)
+        
+        #decoder
+        for _,p_deconv in self.decoder.named_children():
+            for name,c_deconv in p_deconv.named_children():
+                if name in ['unpool5','unpool4','unpool3','unpool2','unpool1']:
+                    x=c_deconv(x,pool_indices[name[2:]])
+                else:
+                    x=c_deconv(x)
+
+        #score
+        x=self.score_fr(x)
+
+        return x
+
+#############################################################################################
+class SegNet(nn.Module):
+    """
+    Some Information about SegNet
+
+
+
+
+    <주목>
+    1.DeconvNet과 구조는 유사하나, FC layer 를 모두 제거하여 파라미터의 수를 감소시켰다.
+    2.Decoder 에서 Transposed conv 가 아닌 conv 사용 
+    3. Encoder 와 Decoder 가 완전 대칭 구조는 아니다. 
+    """
+    def __init__(self,num_classes=12):
+        super(SegNet, self).__init__()
+
+        def CBR(in_channels,out_channels,kernel_size=3,stride=1,padding=1):
+            return nn.Sequential(nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding
+            ), 
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+            )
+
+        def encoder():
+            module=nn.ModuleDict()
+            conv1=nn.Sequential(OrderedDict([
+                ('conv1_1',CBR(in_channels=3,out_channels=64,kernel_size=3,stride=1,padding=1)),
+                ('conv1_2',CBR(64,64,3,1,1)),
+                ('pool1',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/2 , return_indices : unpooling 
+            ])
+            )
+            module['conv1']=conv1
+
+            conv2=nn.Sequential(OrderedDict([
+                ('conv2_1',CBR(64,128,3,1,1)),
+                ('conv2_2',CBR(128,128,3,1,1)),
+                ('pool2',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/4 , return_indices : unpooling 
+            ])
+            )
+            module['conv2']=conv2
+
+
+            conv3=nn.Sequential(OrderedDict([
+                ('conv3_1',CBR(128,256,3,1,1)),
+                ('conv3_2',CBR(256,256,3,1,1)),
+                ('conv3_3',CBR(256,256,3,1,1)),
+                ('pool3',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/8 , return_indices : unpooling 
+            ])
+            )
+            module['conv3']=conv3
+
+            conv4=nn.Sequential(OrderedDict([
+                ('conv4_1',CBR(256,512,3,1,1)),
+                ('conv4_2',CBR(512,512,3,1,1)),
+                ('conv4_3',CBR(512,512,3,1,1)),
+                ('pool4',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/16 , return_indices : unpooling 
+            ])
+            )
+            module['conv4']=conv4
+
+            conv5=nn.Sequential(OrderedDict([
+                ('conv5_1',CBR(512,512,3,1,1)),
+                ('conv5_2',CBR(512,512,3,1,1)),
+                ('conv5_3',CBR(512,512,3,1,1)),
+                ('pool5',nn.MaxPool2d(kernel_size=2,stride=2,ceil_mode=True,return_indices=True)) # Original -> 1/32 , return_indices : unpooling 
+            ])
+            )
+            module['conv5']=conv5
+
+            return module
+
+        def decoder():
+            module=nn.ModuleDict()
+            deconv5=nn.Sequential(OrderedDict([
+                ('unpool5',nn.MaxUnpool2d(kernel_size=2,stride=2)),# 1/32 -> 1/16
+                ('deconv5_1',CBR(512,512,3,1,1)),
+                ('deconv5_2',CBR(512,512,3,1,1)),
+                ('deconv5_3',CBR(512,512,3,1,1)),
+            ])) 
+            module['deconv5']=deconv5
+
+            deconv4=nn.Sequential(OrderedDict([
+                ('unpool4',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/16 -> 1/8
+                ('deconv4_1',CBR(512,512,3,1,1)),
+                ('deconv4_2',CBR(512,512,3,1,1)),
+                ('deconv4_3',CBR(512,256,3,1,1)),
+            ])) 
+            module['deconv4']=deconv4
+
+            deconv3=nn.Sequential(OrderedDict([
+                ('unpool3',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/8 -> 1/4
+                ('deconv3_1',CBR(256,256,3,1,1)),
+                ('deconv3_2',CBR(256,256,3,1,1)),
+                ('deconv3_3',CBR(256,128,3,1,1)),
+            ])) 
+            module['deconv3']=deconv3
+
+            deconv2=nn.Sequential(OrderedDict([
+                ('unpool2',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/8 -> 1/2
+                ('deconv2_1',CBR(128,64,3,1,1)),
+                ('deconv2_2',CBR(64,64,3,1,1)),
+            ])) 
+            module['deconv2']=deconv2
+
+            deconv1=nn.Sequential(OrderedDict([
+                ('unpool1',nn.MaxUnpool2d(kernel_size=2,stride=2)), # 1/2 -> Original
+                ('deconv1_1',CBR(64,64,3,1,1)),
+            ])) 
+            module['deconv1']=deconv1
+
+            return module
+        
+        self.encoder=encoder()
+        self.decoder=decoder()
+        self.score_fr=nn.Conv2d(64,num_classes,3,1,1)
+
+
+    def forward(self, x):
+        #encoder
+        pool_indices=dict()
+        for _,p_module in self.encoder.named_children(): 
+            for name,c_module in p_module.named_children(): 
+                if name in ['pool1','pool2','pool3','pool4','pool5']:
+                    x,pool_indices[name]=c_module(x)
+                else:
+                    x=c_module(x)
+        
+        #decoder
+        for _,p_deconv in self.decoder.named_children():
+            for name,c_deconv in p_deconv.named_children():
+                if name in ['unpool5','unpool4','unpool3','unpool2','unpool1']:
+                    x=c_deconv(x,pool_indices[name[2:]])
+                else:
+                    x=c_deconv(x)
+
+        #score
+        x=self.score_fr(x)
 
         return x
 
@@ -80,14 +437,18 @@ DeepLabV1,DilatedNet,DeepLabV2,DeepLabV3
 
 class DeepLabV1(nn.Module):
     """Some Information about DeepLabV1-LargeFOV
+
     conv1(rate=1) : 3x3 conv , 3x3 conv , 3x3 MaxPooling(stride=2,padding=1)
     conv2(rate=1) : 3x3 conv , 3x3 conv , 3x3 MaxPooling(stride=2,padding=1)
     conv3(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv , 3x3 MaxPooling(stride=2,padding=1)  
     conv4(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv , 3x3 MaxPooling(stride=1,padding=1)
     conv5(rate=2) : 3x3 conv , 3x3 conv , 3x3 conv , 3x3 MaxPooling(stride=1,padding=1) , 3x3 AvgPooling(stride=1,padding=1)
+
     FC6(rate=12) : 3x3 conv
     FC7 : 1x1 conv
+
     Score : 1x1 conv
+
     Up Sampling : Bi-linear Interpolation
 
 
@@ -216,8 +577,10 @@ class DilatedNet(nn.Module):
     conv3(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv , 2x2 MaxPooling(stride=2,padding=0)
     conv4(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv 
     conv5(rate=2) : 3x3 conv , 3x3 conv , 3x3 conv 
+
     FC6(rate=4) : 7x7 conv 
     FC7 : 1x1 conv
+
     Score : 1x1 conv
 
     <Additionally suggested>
@@ -375,9 +738,12 @@ class DeepLabV2(nn.Module):
     conv3(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv, 3x3 MaxPooling
     conv4(rate=1) : 3x3 conv , 3x3 conv , 3x3 conv, 3x3 MaxPooling
     conv5(rate=2) : 3x3 conv , 3x3 conv , 3x3 conv, 3x3 MaxPooling
+
     fc6(rate=[6,12,18,24]) : 3x3 conv
     fc7 : 1x1 conv
+
     score : 1x1 conv 
+
     Up Sampling : Bi-linear Interpolation
 
     <주목>
