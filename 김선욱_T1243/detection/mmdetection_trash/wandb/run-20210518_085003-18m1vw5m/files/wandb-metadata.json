@@ -1,0 +1,26 @@
+{
+    "os": "Linux-4.4.0-59-generic-x86_64-with-debian-buster-sid",
+    "python": "3.7.7",
+    "heartbeatAt": "2021-05-18T08:50:04.725938",
+    "startedAt": "2021-05-18T08:50:03.503534",
+    "docker": null,
+    "gpu": "Tesla V100-PCIE-32GB",
+    "gpu_count": 1,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [
+        "-f",
+        "/opt/ml/.local/share/jupyter/runtime/kernel-9a433269-8f0c-446d-9eea-d31b777f92a1.json"
+    ],
+    "state": "running",
+    "program": "code/mmdetection_trash/faster_rcnn_train.ipynb",
+    "root": "/opt/ml/code/mmdetection_trash",
+    "git": {
+        "remote": "https://github.com/Pstage-Segmentation-Detection/mmdetection_trash",
+        "commit": "b42c9ce52bee71d1b3ba0fdd9cf4bae2ba5c95f5"
+    },
+    "email": null,
+    "host": "a02224b79639",
+    "username": "root",
+    "executable": "/opt/conda/bin/python"
+}
