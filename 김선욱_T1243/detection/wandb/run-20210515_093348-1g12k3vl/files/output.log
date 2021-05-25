@@ -1,0 +1,1 @@
+cv2.error: OpenCV(4.5.2) /tmp/pip-req-build-5wrl9sz4/opencv/modules/imgproc/src/imgwarp.cpp:1799: error: (-5:Bad argument) Unknown interpolation method in function 'remap'

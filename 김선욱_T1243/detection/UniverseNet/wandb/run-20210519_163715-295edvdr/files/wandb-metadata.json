@@ -1,0 +1,24 @@
+{
+    "os": "Linux-4.4.0-59-generic-x86_64-with-debian-buster-sid",
+    "python": "3.7.7",
+    "heartbeatAt": "2021-05-19T16:37:16.918390",
+    "startedAt": "2021-05-19T16:37:15.749491",
+    "docker": null,
+    "gpu": "Tesla V100-PCIE-32GB",
+    "gpu_count": 1,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "mmtrain.py",
+    "codePath": "mmtrain.py",
+    "git": {
+        "remote": "https://github.com/shinya7y/UniverseNet.git",
+        "commit": "db3f96cb7e1b0def1157e252f085e7d49d2b7acc"
+    },
+    "email": null,
+    "root": "/opt/ml/code/UniverseNet",
+    "host": "a02224b79639",
+    "username": "root",
+    "executable": "/opt/conda/bin/python3"
+}
