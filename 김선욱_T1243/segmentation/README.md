@@ -6,18 +6,17 @@
 Final submission:
 |Public LB |Private LB|
 |:---|:---|
-|0.6674 |0.6366|
-
+|0.6674 |0.6366| 
+<br/><br/>
 
 
 ## Models
 
 - FPN
 
-- DeepLabV3Plus
+- DeepLabV3Plus<br/><br/>
 
-#
-#
+
 
 ## Augmentation
 
@@ -38,4 +37,18 @@ A.Compose([
             ToTensorV2()
                             ])
 ```
+<br/><br/>
 
+## Loss
+<br/>
+
+- SoftCrossEntropyLoss
+
+- DiceLoss
+
+<br/><br/>
+
+## Optimizer
+
+
+- ReduceLROnPlateau(
