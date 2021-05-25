@@ -4,13 +4,11 @@ from torch.nn import functional as F
 import os
 import random
 import time
-import json
 import warnings 
 warnings.filterwarnings('ignore')
 
 
 from torch.utils.data import Dataset, DataLoader
-from utils import label_accuracy_score
 import cv2
 
 import numpy as np
@@ -22,7 +20,6 @@ import torchvision
 import torchvision.transforms as transforms
 
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 import segmentation_models_pytorch as smp
 
@@ -38,6 +35,7 @@ model_2 = smp.FPN(
     in_channels=3,
     classes = 12,
 )
+
 model_3 = smp.DeepLabV3Plus(
     encoder_name="se_resnext101_32x4d",
     encoder_weights="imagenet",
@@ -45,6 +43,12 @@ model_3 = smp.DeepLabV3Plus(
     classes = 12,
 )
 
+model_4 = smp.DeepLabV3Plus(
+    encoder_name="se_resnext101_32x4d",
+    encoder_weights="imagenet",
+    in_channels=3,
+    classes = 12,
+)
 
 def multi_model_ensemble_test (models, weights, dataloader, device) :
     size = 256
@@ -82,15 +86,17 @@ def multi_model_ensemble_test (models, weights, dataloader, device) :
 
 device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
 models = []
-weights = [0.15,0.4,0.45]
+weights = [0.09,0.41,0.45,0.05]
 
 model_path1 = './saved/best/DeepLabV3_FINAL.pt'
 model_path2 = './saved/best/FPN_FINAL.pt'
 model_path3 = './saved/best/DeepLabV3_FINAL2.pth'
+model_path4 = './saved/best/DeepLabV3_FINAL3.pt'
 
 checkpoint1 = torch.load(model_path1, map_location=device)
 checkpoint2 = torch.load(model_path2, map_location=device)
 checkpoint3 = torch.load(model_path3, map_location=device)
+checkpoint4 = torch.load(model_path4, map_location=device)
 
 model_1.load_state_dict(checkpoint1)
 model_1 = model_1.to(device)
@@ -105,6 +111,13 @@ model_3.load_state_dict(checkpoint3)
 model_3 = model_3.to(device)
 models.append(model_3)
 
+
+model_4.load_state_dict(checkpoint3)
+model_4 = model_4.to(device)
+models.append(model_4)
+
+from dataset import get_data
+train_loader, val_loader, test_loader = get_data()
 
 
 # sample_submisson.csv 열기
